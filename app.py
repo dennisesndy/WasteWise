@@ -18,6 +18,7 @@ from data.loader import load_data, get_column_mapping, get_product_list, get_uni
 # Models
 from models.arima_model import run_arima_forecast, ARIMA_AVAILABLE
 from models.clustering import run_clustering_analysis, get_product_cluster, SKLEARN_AVAILABLE
+from models.random_forest_model import run_random_forest  # <--- New Import
 from models.simulation import run_simulation
 
 # Components
@@ -96,6 +97,22 @@ if not SKLEARN_AVAILABLE:
 # Run Models
 # ─────────────────────────────────────────
 with st.spinner("Running analysis..."):
+    # Random Forest Forecast
+    rf_res = None
+    if SKLEARN_AVAILABLE and COL_DATE in df.columns:
+        # Filter data for the specific product before passing to RF
+        product_df = df[df[COL_PRODUCT] == user_input["product"]]
+        
+        if COL_DATE:
+            product_df = product_df.sort_values(COL_DATE)
+
+        if len(product_df) > 14: # Ensure enough data for 7-day lags
+            rf_res = run_random_forest(
+                df=product_df,
+                target_col=COL_DEMAND,
+                n_forecast=user_input["forecast_days"]
+            )
+    else: st.warning("⚠️ Random Forest disabled: Date column not found or Scikit-Learn missing.")
     # ARIMA Forecast
     arima_res, arima_err = None, None
     if ARIMA_AVAILABLE:
@@ -139,6 +156,7 @@ with st.spinner("Running analysis..."):
         days=user_input["forecast_days"],
         arima_daily=arima_daily
     )
+
 
 
 # ─────────────────────────────────────────
@@ -210,6 +228,19 @@ with tab1:
         render_metrics_row(arima_metrics, columns=3)
         render_arima_chart(arima_res, user_input["forecast_days"])
 
+    # Inside tab1, after ARIMA sections:
+    if rf_res:
+        render_section_title("🌲", "Random Forest Model")
+        
+        rf_metrics = [
+            {"label": "RF Mean Forecast", "value": round(rf_res['preds'].mean(), 1), 
+             "sub": "units/day", "card_class": "safe"},
+            {"label": "Model MAE", "value": round(rf_res['mae'], 2), 
+             "sub": "Validation Error", "card_class": "arima"},
+        ]
+        render_metrics_row(rf_metrics, columns=2)
+        
+
     # ── Simulation Chart ──
     render_section_title("📈", f"{user_input['forecast_days']}-Day Simulation")
     render_simulation_chart(sim_res["sim_df"], arima_res is not None)
@@ -276,6 +307,14 @@ with tab2:
 with tab3:
     # ── Factor Breakdown ──
     render_section_title("🔬", "Demand Factor Breakdown")
+    if rf_res and 'feature_importance' in rf_res:
+        st.subheader("🌲 Random Forest: Driver Analysis")
+        importance_df = pd.DataFrame({
+        'Feature': rf_res['feature_importance'].keys(),
+        'Importance': rf_res['feature_importance'].values()
+     }).sort_values(by='Importance', ascending=False).head(5)
+        st.bar_chart(importance_df.set_index('Feature'))
+        st.caption("This shows which factors (Lags vs. Weather) influenced the model the most.")
     
     factors = {
         "Base Historical": sim_res["base_demand"],
@@ -349,6 +388,8 @@ with tab3:
             else:
                 render_insight_box(f"✅ Stable demand ({cv:.1f}% CV)", "info")
 
+    
+
     # ── Sensitivity Analysis ──
     render_section_title("🏷", "Discount Sensitivity")
     
@@ -372,6 +413,9 @@ with tab3:
         sens_arima=sens_arima if arima_res else [],
         current_discount=user_input["discount"]
     )
+    
+
+    
 
 
 # ─────────────────────────────────────────

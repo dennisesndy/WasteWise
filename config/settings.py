@@ -15,7 +15,7 @@ COLUMN_CANDIDATES = {
     "season": ["season", "seasonality", "seasonal_factor"],
     "discount": ["discount", "discount_pct", "discount_percent", "promo"],
     "inventory": ["inventory", "stock", "stock_level", "quantity"],
-    "date": ["date", "day", "timestamp", "record_date"],
+    "date": ["date", "day", "timestamp", "record_date", "transaction_date"],
 }
 
 # Default values
