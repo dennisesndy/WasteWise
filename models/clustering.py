@@ -59,7 +59,7 @@ def run_clustering_analysis(
     
     X = product_stats[feature_cols].fillna(0).values
     
-    if len(X) < n_clusters:
+    if len(X) <= n_clusters:
         return None, f"Not enough products ({len(X)}) for {n_clusters} clusters"
 
     # Standardize features
