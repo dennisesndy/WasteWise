@@ -1,7 +1,3 @@
-"""
-K-means clustering for demand pattern segmentation.
-"""
-
 import numpy as np
 import pandas as pd
 import streamlit as st

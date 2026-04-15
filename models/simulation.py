@@ -1,6 +1,3 @@
-"""
-Demand simulation combining ARIMA and factor-based forecasting.
-"""
 
 import numpy as np
 import pandas as pd

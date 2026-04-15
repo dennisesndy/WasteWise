@@ -193,54 +193,52 @@ with tab1:
     arima_avg = round(safe_mean(arima_res["pred_mean"]), 1) if arima_res else "N/A"
     
     metrics = [
-        {"label": "Base Avg Demand", "value": sim_res["base_demand"], 
+        {"label": "Typical Daily Sales", "value": sim_res["base_demand"], 
          "sub": "units/day", "card_class": "safe"},
-        {"label": "ARIMA Forecast", "value": arima_avg,
+        {"label": "AI Daily Prediction", "value": arima_avg,
          "sub": "units/day", "card_class": "arima"},
-        {"label": f"Total Demand ({user_input['forecast_days']}d)", 
+        {"label": f"Expected Sales ({user_input['forecast_days']}d)", 
          "value": sim_res["total_projected"], "sub": "units", "card_class": "safe"},
-        {"label": "Projected Waste", "value": sim_res["total_waste"],
-         "sub": "units", "card_class": waste_cls},
-        {"label": "Waste Rate", "value": f"{waste_pct}%",
-         "sub": "of inventory", "card_class": waste_cls},
+        {"label": "Expected Leftovers", "value": sim_res["total_waste"],
+         "sub": "units at risk", "card_class": waste_cls},
+        {"label": "Leftover Percentage", "value": f"{waste_pct}%",
+         "sub": "of total inventory", "card_class": waste_cls},
     ]
     render_metrics_row(metrics)
     
     if arima_res:
         render_insight_box(
-            "🔀 <strong>Blended Model</strong>: 60% ARIMA + 40% Factor Model",
+            "🔀 <strong>Smart Prediction</strong>: Combines AI trends (60%) with rules like weather and discounts (40%).",
             "info"
         )
 
     # ── ARIMA Chart ──
     if arima_res:
-        render_section_title("🤖", "ARIMA Model")
+        render_section_title("🤖", "ARIMA model")
         
         arima_metrics = [
-            {"label": "Order", "value": f"({arima_res['order'][0]},{arima_res['order'][1]},{arima_res['order'][2]})",
-             "sub": "p, d, q", "card_class": "arima"},
-            {"label": "AIC", "value": arima_res["aic"],
-             "sub": "lower = better", "card_class": "arima"},
-            {"label": "Stationarity", 
-             "value": "Stationary ✅" if arima_res["is_stationary"] else "Non-Stationary ⚠️",
-             "sub": f"p={arima_res['adf_pvalue']}", "card_class": "arima"},
+            {"label": "Model Complexity", "value": f"({arima_res['order'][0]},{arima_res['order'][1]},{arima_res['order'][2]})",
+             "sub": "p,d,q", "card_class": "arima"},
+            {"label": "Prediction Error Score (Mean Absolute Error)", "value": arima_res["aic"],
+             "sub": "Lower is better", "card_class": "arima"},
+            {"label": "Sales Pattern", 
+             "value": "Steady ✅" if arima_res["is_stationary"] else "Changing ⚠️",
+             "sub": "Data stability", "card_class": "arima"},
         ]
         render_metrics_row(arima_metrics, columns=3)
         render_arima_chart(arima_res, user_input["forecast_days"])
 
-    # Inside tab1, after ARIMA sections:
     if rf_res:
         render_section_title("🌲", "Random Forest Model")
         
         rf_metrics = [
-            {"label": "RF Mean Forecast", "value": round(rf_res['preds'].mean(), 1), 
+            {"label": "AI Average Prediction", "value": round(rf_res['preds'].mean(), 1), 
              "sub": "units/day", "card_class": "safe"},
-            {"label": "Model MAE", "value": round(rf_res['mae'], 2), 
-             "sub": "Validation Error", "card_class": "arima"},
+            {"label": "Average Mistake", "value": round(rf_res['mae'], 2), 
+             "sub": "Off by this many units", "card_class": "arima"},
         ]
         render_metrics_row(rf_metrics, columns=2)
         
-
     # ── Simulation Chart ──
     render_section_title("📈", f"{user_input['forecast_days']}-Day Simulation")
     render_simulation_chart(sim_res["sim_df"], arima_res is not None)
@@ -255,25 +253,24 @@ with tab1:
         forecast_days=user_input["forecast_days"]
     )
 
-
 # ═══════════════════════════════════════════
 # TAB 2: CLUSTERS
 # ═══════════════════════════════════════════
 with tab2:
-    render_section_title("🎯", "Product Clustering")
+    render_section_title("🎯", "Product Grouping")
     
     if cluster_res:
         # Cluster metrics
         cluster_metrics = [
-            {"label": "Total Clusters", "value": cluster_res["n_clusters"],
-             "sub": "product groups", "card_class": "cluster"},
-            {"label": "Silhouette Score", "value": cluster_res["silhouette_score"],
-             "sub": "cluster quality", "card_class": "cluster"},
+            {"label": "Product Groups Found", "value": cluster_res["n_clusters"],
+             "sub": "Total categories", "card_class": "cluster"},
+            {"label": "Grouping Quality Score", "value": cluster_res["silhouette_score"],
+             "sub": "Higher is better", "card_class": "cluster"},
         ]
         
         if product_cluster:
             cluster_metrics.append({
-                "label": f"{user_input['product']} Cluster",
+                "label": f"{user_input['product']} Group",
                 "value": product_cluster["cluster_label"],
                 "sub": f"{product_cluster['products_in_cluster']} similar products",
                 "card_class": "cluster"
@@ -282,49 +279,48 @@ with tab2:
         render_metrics_row(cluster_metrics, columns=3)
         
         render_insight_box(
-            "🎯 Products are grouped by <strong>demand volume</strong> and "
-            "<strong>variability</strong>. Similar products can share inventory strategies.",
+            "🎯 Products are grouped by <strong>how much they sell</strong> and "
+            "<strong>how predictable they are</strong>. Similar products can use similar stocking rules.",
             "cluster"
         )
         
         render_cluster_chart(cluster_res)
         
         # Cluster interpretation
-        render_section_title("📋", "Cluster Profiles")
+        render_section_title("📋", "Group Profiles")
         for _, row in cluster_res["cluster_summary"].iterrows():
             st.markdown(
-                f"- **Cluster {int(row['cluster'])} ({row['label']})**: "
+                f"- **Group {int(row['cluster'])} ({row['label']})**: "
                 f"{int(row['product_count'])} products, "
-                f"avg demand {row['avg_demand']:.1f} units/day"
+                f"average sales {row['avg_demand']:.1f} units/day"
             )
     else:
-        st.info("Clustering unavailable. Check that scikit-learn is installed.")
-
+        st.info("Grouping unavailable. Check that scikit-learn is installed.")
 
 # ═══════════════════════════════════════════
 # TAB 3: ANALYSIS
 # ═══════════════════════════════════════════
 with tab3:
     # ── Factor Breakdown ──
-    render_section_title("🔬", "Demand Factor Breakdown")
+    render_section_title("🔬", "What is Driving Sales?")
     if rf_res and 'feature_importance' in rf_res:
-        st.subheader("🌲 Random Forest: Driver Analysis")
+        st.subheader("🌲 Top Factors Influencing the AI")
         importance_df = pd.DataFrame({
         'Feature': rf_res['feature_importance'].keys(),
         'Importance': rf_res['feature_importance'].values()
      }).sort_values(by='Importance', ascending=False).head(5)
         st.bar_chart(importance_df.set_index('Feature'))
-        st.caption("This shows which factors (Lags vs. Weather) influenced the model the most.")
+        st.caption("This shows which factors (like Past Sales or Weather) influenced the prediction the most.")
     
     factors = {
-        "Base Historical": sim_res["base_demand"],
-        f"+ Weather ({user_input['weather']})": round(
+        "Normal Daily Sales": sim_res["base_demand"],
+        f"+ Weather Impact ({user_input['weather']})": round(
             sim_res["base_demand"] * sim_res["w_mult"], 1
         ),
-        f"+ Season ({user_input['season']})": round(
+        f"+ Season Impact ({user_input['season']})": round(
             sim_res["base_demand"] * sim_res["w_mult"] * sim_res["s_mult"], 1
         ),
-        f"+ Discount ({user_input['discount']}%)": sim_res["projected_daily"],
+        f"+ Discount Impact ({user_input['discount']}%)": sim_res["projected_daily"],
     }
     
     multipliers = {
@@ -337,7 +333,7 @@ with tab3:
 
     # ── Model Comparison ──
     if arima_res:
-        render_section_title("⚖️", "ARIMA vs Factor Model")
+        render_section_title("⚖️", "Comparing Prediction Methods")
         
         sim_df = sim_res["sim_df"]
         arima_vals = sim_df["ARIMA Forecast"].dropna().values
@@ -349,17 +345,17 @@ with tab3:
         diff = round(float(np.mean(arima_vals)) - float(np.mean(factor_vals)), 1)
         
         comp_metrics = [
-            {"label": "ARIMA MAE", "value": mae_arima, "sub": "vs blended", "card_class": "arima"},
-            {"label": "Factor MAE", "value": mae_factor, "sub": "vs blended", "card_class": "safe"},
-            {"label": "Avg Difference", "value": abs(diff), 
-             "sub": f"ARIMA {'higher' if diff > 0 else 'lower'}", 
+            {"label": "AI Average Mistake", "value": mae_arima, "sub": "Units off", "card_class": "arima"},
+            {"label": "Rule-based Mistake", "value": mae_factor, "sub": "Units off", "card_class": "safe"},
+            {"label": "Difference Between Methods", "value": abs(diff), 
+             "sub": f"AI is {'higher' if diff > 0 else 'lower'}", 
              "card_class": "warning" if abs(diff) > 5 else "safe"},
         ]
         render_metrics_row(comp_metrics, columns=3)
         render_comparison_chart(sim_df)
 
     # ── Historical Distribution ──
-    render_section_title("📉", "Historical Demand")
+    render_section_title("📉", "Past Sales History")
     
     hist_df = sim_res["historical_subset"]
     if COL_DEMAND in hist_df.columns and not hist_df.empty:
@@ -384,14 +380,12 @@ with tab3:
             cv = (hist_df[COL_DEMAND].std() / hist_df[COL_DEMAND].mean() * 100 
                   if hist_df[COL_DEMAND].mean() > 0 else 0)
             if cv > 25:
-                render_insight_box(f"⚠️ High variability ({cv:.1f}% CV)", "warn")
+                render_insight_box(f"⚠️ Highly Unpredictable Sales (Fluctuates by {cv:.1f}%)", "warn")
             else:
-                render_insight_box(f"✅ Stable demand ({cv:.1f}% CV)", "info")
-
-    
+                render_insight_box(f"✅ Steady Sales (Fluctuates by {cv:.1f}%)", "info")
 
     # ── Sensitivity Analysis ──
-    render_section_title("🏷", "Discount Sensitivity")
+    render_section_title("🏷", "How Discounts Affect Sales")
     
     discount_range = list(range(0, 55, 5))
     sens_demands, sens_wastes, sens_arima = [], [], []

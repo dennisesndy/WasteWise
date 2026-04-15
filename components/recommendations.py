@@ -1,7 +1,6 @@
 """
 Smart recommendations component.
 """
-
 import numpy as np
 import streamlit as st
 from components.header import render_section_title
@@ -22,53 +21,52 @@ def generate_recommendations(
     # Waste-based recommendations
     if waste_pct > 30:
         optimal = int(sim_res["projected_daily"] * forecast_days * 1.05)
-        rec = f"🔴 **High waste risk ({waste_pct}%)** — Reduce order to ~**{optimal} units**"
+        rec = f"🔴 **High risk of leftovers ({waste_pct}%)** — Reduce your order to around **{optimal} units**"
         if arima_res:
             arima_optimal = int(float(np.mean(arima_res["pred_mean"])) * forecast_days * 1.05)
-            rec += f" (ARIMA suggests ~{arima_optimal} units)"
+            rec += f" (The AI expects you'll need ~{arima_optimal} units)"
         recs.append(rec)
     elif waste_pct > 15:
         recs.append(
-            f"🟡 **Moderate waste ({waste_pct}%)** — Consider a "
-            f"**{min(discount + 5, 50)}% discount** to boost sales"
+            f"🟡 **Moderate leftovers expected ({waste_pct}%)** — Consider running a "
+            f"**{min(discount + 5, 50)}% discount** to help boost sales"
         )
     else:
         recs.append(
-            f"🟢 **Low waste ({waste_pct}%)** — Inventory levels are well-calibrated"
+            f"🟢 **Low leftover risk ({waste_pct}%)** — Your inventory levels look healthy"
         )
 
     # Discount recommendation
     if discount == 0 and waste_pct > 20:
         recs.append(
-            f"💡 Apply a **10–15% discount** on day {max(1, forecast_days - 2)} "
-            "to clear stock before expiry"
+            f"💡 Plan to apply a **10–15% discount** on day {max(1, forecast_days - 2)} "
+            "to help clear out stock before it spoils"
         )
 
     # Weather-based recommendations
     if sim_res["w_mult"] < 0.9:
         recs.append(
-            f"🌧 **{weather} weather** suppresses demand — stock conservatively"
+            f"🌧 **{weather} weather** usually slows down sales — be conservative when ordering"
         )
     elif sim_res["w_mult"] > 1.08:
         recs.append(
-            f"☀️ **{weather} weather** boosts demand — consider +10-15% stock"
+            f"☀️ **{weather} weather** usually boosts sales — consider ordering 10-15% extra"
         )
 
     # ARIMA-based recommendations
     if arima_res:
         if not arima_res["is_stationary"]:
             recs.append(
-                "📊 **Non-stationary pattern detected** — demand is trending; "
-                "review reorder points"
+                "📊 **Changing sales pattern detected** — Sales are currently trending up or down, so rely more on recent data than past averages."
             )
         
         arima_avg = float(np.mean(arima_res["pred_mean"]))
         base = sim_res["base_demand"]
         if abs(arima_avg - base) > base * 0.15:
-            direction = "above" if arima_avg > base else "below"
+            direction = "higher than" if arima_avg > base else "lower than"
             recs.append(
-                f"🤖 **ARIMA trend**: forecast ({round(arima_avg, 1)}/day) is "
-                f"{direction} historical average ({base}/day)"
+                f"🤖 **AI Trend Insight**: Expected sales ({round(arima_avg, 1)}/day) are trending "
+                f"{direction} your normal average ({base}/day)"
             )
 
     # Cluster-based recommendations
@@ -76,13 +74,13 @@ def generate_recommendations(
         label = cluster_info["cluster_label"]
         if "Variable" in label:
             recs.append(
-                f"🎯 **Cluster: {label}** — This product has variable demand; "
-                "maintain safety stock"
+                f"🎯 **Product Group: {label}** — Sales for this item bounce around a lot; "
+                "keep a little extra safety stock just in case."
             )
         elif "High-Demand" in label:
             recs.append(
-                f"🎯 **Cluster: {label}** — Prioritize availability; "
-                "stockouts are costly"
+                f"🎯 **Product Group: {label}** — This is a fast seller; "
+                "prioritize keeping it in stock because running out costs you money."
             )
 
     return recs
