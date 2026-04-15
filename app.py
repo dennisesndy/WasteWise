@@ -208,7 +208,7 @@ with tab1:
     
     if arima_res:
         render_insight_box(
-            "🔀 <strong>Smart Prediction</strong>: Combines AI trends (60%) with rules like weather and discounts (40%).",
+            "🔀 <strong>Smart Prediction</strong>: Combines AI trends (40%) with rules like weather and discounts (60%).",
             "info"
         )
 
@@ -294,7 +294,13 @@ with tab2:
                 f"{int(row['product_count'])} products, "
                 f"average sales {row['avg_demand']:.1f} units/day"
             )
+            
+    # ── THIS IS THE FIX ──
+    elif cluster_err:
+        # If scikit-learn is installed but the clustering math fails, show the real error
+        st.warning(f"⚠️ **Could not group products:** {cluster_err}")
     else:
+        # Only show this if scikit-learn is actually missing or disabled
         st.info("Grouping unavailable. Check that scikit-learn is installed.")
 
 # ═══════════════════════════════════════════

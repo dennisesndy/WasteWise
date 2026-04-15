@@ -70,7 +70,7 @@ def run_simulation(
     s_mult = get_season_multiplier(season_val) if col_season else 1.0
 
     # Discount adjustment
-    d_effect = discount_pct / 100 * 1.2
+    d_effect = discount_pct / 100 * 1.5
     disc_adj = 1 + d_effect
 
     if col_discount and col_discount in season_subset.columns:
